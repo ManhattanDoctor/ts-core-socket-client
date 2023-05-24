@@ -3,6 +3,7 @@ import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
 import * as _ from 'lodash';
 
 export abstract class SocketClient<U = any, V = any, S extends ISocketClientBaseSettings = ISocketClientBaseSettings> extends Loadable<U, V> {
+    
     // --------------------------------------------------------------------------
     //
     //  Properties
