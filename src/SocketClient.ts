@@ -3,7 +3,7 @@ import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
 import * as _ from 'lodash';
 
 export abstract class SocketClient<U = any, V = any, S extends ISocketClientBaseSettings = ISocketClientBaseSettings> extends Loadable<U, V> {
-    
+
     // --------------------------------------------------------------------------
     //
     //  Properties
@@ -24,7 +24,7 @@ export abstract class SocketClient<U = any, V = any, S extends ISocketClientBase
 
     constructor(protected logger: ILogger, settings?: S) {
         super();
-        this._settings = settings;
+        this.settings = !_.isNil(settings) ? settings : {} as any;
     }
 
     //--------------------------------------------------------------------------
@@ -119,15 +119,15 @@ export abstract class SocketClient<U = any, V = any, S extends ISocketClientBase
     //
     //--------------------------------------------------------------------------
 
-    private proxySocketConnectErrorHandler = (event: any): void => this.socketConnectErrorHandler(event);
+    protected proxySocketConnectedHandler = (): void => this.socketConnectedHandler();
 
-    private proxySocketConnectedHandler = (): void => this.socketConnectedHandler();
+    protected proxySocketConnectErrorHandler = (event: any): void => this.socketConnectErrorHandler(event);
 
-    private proxySocketDisconnectedHandler = (reason: string): void => this.socketDisconnectedHandler(reason);
+    protected proxySocketDisconnectedHandler = (reason: string): void => this.socketDisconnectedHandler(reason);
 
-    private proxySocketReconnectErrorHandler = (event: any): void => this.socketReconnectErrorHandler(event);
+    protected proxySocketReconnectErrorHandler = (event: any): void => this.socketReconnectErrorHandler(event);
 
-    private proxySocketReconnectFailedHandler = (): void => this.socketReconnectFailedHandler();
+    protected proxySocketReconnectFailedHandler = (): void => this.socketReconnectFailedHandler();
 
     //--------------------------------------------------------------------------
     //
@@ -207,23 +207,10 @@ export abstract class SocketClient<U = any, V = any, S extends ISocketClientBase
     //
     //--------------------------------------------------------------------------
 
-    public get query(): SocketClientQuery {
-        return !_.isNil(this.settings) ? this.settings.query : null;
-    }
-    public set query(value: SocketClientQuery) {
-        if (_.isNil(this.settings)) {
-            this.settings = {} as any;
-        }
-        this.settings.query = value;
-    }
-
     public get url(): string {
         return !_.isNil(this.settings) ? this.settings.url : null;
     }
     public set url(value: string) {
-        if (_.isNil(this.settings)) {
-            this.settings = {} as any;
-        }
         this.settings.url = value;
     }
 
@@ -244,5 +231,3 @@ export abstract class SocketClient<U = any, V = any, S extends ISocketClientBase
 export interface ISocketClientBaseSettings extends Partial<ManagerOptions & SocketOptions> {
     url?: string;
 }
-
-export type SocketClientQuery = Record<string, any>;
