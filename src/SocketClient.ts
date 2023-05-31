@@ -1,8 +1,8 @@
-import { ILogger, PromiseHandler, ExtendedError, ObservableData, Loadable, LoadableStatus, LoadableEvent } from '@ts-core/common';
+import { ILogger, PromiseHandler, ExtendedError, ObservableData, Loadable, LoadableStatus, LoadableEvent, UrlUtil } from '@ts-core/common';
 import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
 import * as _ from 'lodash';
 
-export abstract class SocketClient<U = any, V = any, S extends ISocketClientBaseSettings = ISocketClientBaseSettings> extends Loadable<U, V> {
+export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocketClientBaseSettings, U = any, V = any> extends Loadable<U, V> {
 
     // --------------------------------------------------------------------------
     //
@@ -72,7 +72,11 @@ export abstract class SocketClient<U = any, V = any, S extends ISocketClientBase
     }
 
     protected createSocket(): Socket {
-        return io(this.url, this.settings).connect();
+        return io(this.getUrl(), this.settings).connect();
+    }
+
+    protected getUrl(): string {
+        return !_.isNil(this.settings.namespace) ? `${UrlUtil.parseUrl(this.url)}${this.settings.namespace}` : this.url;
     }
 
     // --------------------------------------------------------------------------
@@ -230,4 +234,5 @@ export abstract class SocketClient<U = any, V = any, S extends ISocketClientBase
 
 export interface ISocketClientBaseSettings extends Partial<ManagerOptions & SocketOptions> {
     url?: string;
+    namespace?: string;
 }
