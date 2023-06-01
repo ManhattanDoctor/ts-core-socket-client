@@ -33,6 +33,14 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
+    public async connect(): Promise<void> {
+        return !_.isNil(this.socket) ? this.socket.connect() : null;
+    }
+
+    public async disconnect(): Promise<void> {
+        return !_.isNil(this.socket) ? this.socket.disconnect() : null;
+    }
+
     public destroy(): void {
         if (this.isDestroyed) {
             return;
