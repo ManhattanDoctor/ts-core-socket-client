@@ -11,7 +11,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    protected socket: S;
+    protected _socket: S;
 
     // --------------------------------------------------------------------------
     //
@@ -21,8 +21,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 
     constructor(logger: ILogger, settings: ITransportSettings, socket: S) {
         super(logger, settings);
-
-        this.socket = socket;
+        this._socket = socket;
         this.socket.request.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
         this.socket.response.pipe(takeUntil(this.destroyed)).subscribe(this.requestResponseReceived);
     }
@@ -46,7 +45,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
             return;
         }
         super.destroy();
-        this.socket = null;
+        this._socket = null;
     }
 
     // --------------------------------------------------------------------------
@@ -82,5 +81,15 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         catch (error) {
             this.commandResponseErrorCatch(command, request, error);
         }
+    }
+
+    // --------------------------------------------------------------------------
+    //
+    //  Public Methods
+    //
+    // --------------------------------------------------------------------------
+
+    public get socket(): TransportSocketClient {
+        return this._socket;
     }
 }
