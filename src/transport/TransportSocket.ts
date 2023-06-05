@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings } from '@ts-core/common';
 import { takeUntil } from 'rxjs';
-import { TransportSocketImpl, TRANSPORT_SOCKET_COMMAND_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest } from '@ts-core/socket-common';
+import { TransportSocketImpl, TRANSPORT_SOCKET_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest } from '@ts-core/socket-common';
 import { TransportSocketClient } from './TransportSocketClient';
 
 export class TransportSocket<S extends TransportSocketClient = TransportSocketClient> extends TransportSocketImpl {
@@ -22,6 +22,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     constructor(logger: ILogger, settings: ITransportSettings, socket: S) {
         super(logger, settings);
         this._socket = socket;
+        this.socket.event.pipe(takeUntil(this.destroyed)).subscribe(this.requestEventReceived);
         this.socket.request.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
         this.socket.response.pipe(takeUntil(this.destroyed)).subscribe(this.requestResponseReceived);
     }
@@ -31,14 +32,6 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //  Public Methods
     //
     // --------------------------------------------------------------------------
-
-    public async connect(): Promise<void> {
-        return !_.isNil(this.socket) ? this.socket.connect() : null;
-    }
-
-    public async disconnect(): Promise<void> {
-        return !_.isNil(this.socket) ? this.socket.disconnect() : null;
-    }
 
     public destroy(): void {
         if (this.isDestroyed) {
@@ -56,7 +49,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 
     protected async eventRequestExecute<U>(event: ITransportEvent<U>, options?: ITransportSocketEventOptions): Promise<void> {
         try {
-            await this.socket.emit(TRANSPORT_SOCKET_COMMAND_EVENT, event);
+            await this.socket.emit(TRANSPORT_SOCKET_EVENT, event);
         }
         catch (error) {
             this.eventRequestErrorCatch(event, options, error);
