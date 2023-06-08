@@ -90,10 +90,10 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
             return this.connectionPromise.promise;
         }
 
+        this.connectionPromise = PromiseHandler.create();
+        
         this.socket = this.createSocket();
         this.status = LoadableStatus.LOADING;
-
-        this.connectionPromise = PromiseHandler.create();
         return this.connectionPromise.promise;
     }
 

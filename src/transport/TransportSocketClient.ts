@@ -89,21 +89,28 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     //
     // --------------------------------------------------------------------------
 
-    public get evented(): Observable<ITransportEvent<any>> {
+    public get transportError(): Observable<ExtendedError> {
+        return this.events.pipe(
+            filter(item => item.type === TransportSocketClientEvent.TRANSPORT_ERROR),
+            map(item => item.data as ExtendedError)
+        );
+    }
+
+    public get transportEvent(): Observable<ITransportEvent<any>> {
         return this.events.pipe(
             filter(item => item.type === TransportSocketClientEvent.TRANSPORT_EVENT),
             map(item => item.data as ITransportEvent<any>)
         );
     }
 
-    public get requested(): Observable<ITransportSocketRequestPayload> {
+    public get transportRequest(): Observable<ITransportSocketRequestPayload> {
         return this.events.pipe(
             filter(item => item.type === TransportSocketClientEvent.TRANSPORT_COMMAND_REQUEST),
             map(item => item.data as ITransportSocketRequestPayload)
         );
     }
 
-    public get responsed(): Observable<ITransportSocketResponsePayload> {
+    public get transportResponse(): Observable<ITransportSocketResponsePayload> {
         return this.events.pipe(
             filter(item => item.type === TransportSocketClientEvent.TRANSPORT_COMMAND_RESPONSE),
             map(item => item.data as ITransportSocketResponsePayload)
