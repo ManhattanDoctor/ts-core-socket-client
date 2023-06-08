@@ -1,6 +1,6 @@
 
 import { ObservableData, ITransportEvent, ExtendedError } from '@ts-core/common';
-import { ITransportSocketRequestPayload, TransportSocketRequestPayload, ITransportSocketResponsePayload, TRANSPORT_SOCKET_CONNECTED, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_EVENT } from '@ts-core/socket-common';
+import { ITransportSocketRequestPayload, TransportSocketRequestPayload, ITransportSocketResponsePayload, TRANSPORT_SOCKET_CONNECTED, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, TRANSPORT_SOCKET_ERROR, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_EVENT } from '@ts-core/socket-common';
 import { filter, map, Observable } from 'rxjs';
 import { Socket } from 'socket.io-client';
 import * as _ from 'lodash';
@@ -17,7 +17,7 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     protected eventListenersAdd(socket: Socket): void {
         socket.on(TRANSPORT_SOCKET_CONNECTED, this.proxyTransportSocketConnected);
 
-        //socket.on(TRANSPORT_SOCKET_ERROR, this.proxyTransportSocketError);
+        socket.on(TRANSPORT_SOCKET_ERROR, this.proxyTransportSocketError);
         socket.on(TRANSPORT_SOCKET_EVENT, this.proxyTransportSocketEventRequest);
         socket.on(TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, this.proxyTransportSocketCommandRequest);
         socket.on(TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, this.proxyTransportSocketCommandResponse);
@@ -26,7 +26,7 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     protected eventListenersRemove(socket: Socket): void {
         socket.off(TRANSPORT_SOCKET_CONNECTED, this.proxyTransportSocketEventRequest);
 
-        //socket.on(TRANSPORT_SOCKET_ERROR, this.proxyTransportSocketError);
+        socket.on(TRANSPORT_SOCKET_ERROR, this.proxyTransportSocketError);
         socket.off(TRANSPORT_SOCKET_EVENT, this.proxyTransportSocketEventRequest);
         socket.off(TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, this.proxyTransportSocketCommandRequest);
         socket.off(TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, this.proxyTransportSocketCommandResponse);
@@ -48,17 +48,15 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     protected proxyTransportSocketCommandResponse = (item: ITransportSocketResponsePayload): void => this.transportCommandResponseHandler(item);
 
     protected transportErrorHandler(item: ExtendedError): void {
-        if (_.isNil(item)) {
-            return;
+        if (!_.isNil(item)) {
+            this.observer.next(new ObservableData(TransportSocketClientEvent.TRANSPORT_ERROR, ExtendedError.create(item)));
         }
-        this.observer.next(new ObservableData(TransportSocketClientEvent.TRANSPORT_ERROR, ExtendedError.create(item)));
     }
 
     protected transportEventRequestHandler<U>(item: ITransportEvent<U>): void {
-        if (_.isNil(item) || _.isNil(item.uid)) {
-            return;
+        if (!_.isNil(item) && !_.isNil(item.uid)) {
+            this.observer.next(new ObservableData(TransportSocketClientEvent.TRANSPORT_EVENT, item));
         }
-        this.observer.next(new ObservableData(TransportSocketClientEvent.TRANSPORT_EVENT, item));
     }
 
     protected transportCommandRequestHandler(item: ITransportSocketRequestPayload): void {
@@ -70,10 +68,9 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     }
 
     protected transportCommandResponseHandler(item: ITransportSocketResponsePayload): void {
-        if (_.isNil(item) || _.isNil(item.id)) {
-            return;
+        if (!_.isNil(item) && !_.isNil(item.id)) {
+            this.observer.next(new ObservableData(TransportSocketClientEvent.TRANSPORT_COMMAND_RESPONSE, item));
         }
-        this.observer.next(new ObservableData(TransportSocketClientEvent.TRANSPORT_COMMAND_RESPONSE, item));
     }
 
     // --------------------------------------------------------------------------
