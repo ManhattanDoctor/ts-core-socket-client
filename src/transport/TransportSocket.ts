@@ -22,9 +22,9 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     constructor(logger: ILogger, settings: ITransportSettings, socket: S) {
         super(logger, settings);
         this._socket = socket;
-        this.socket.event.pipe(takeUntil(this.destroyed)).subscribe(this.requestEventReceived);
-        this.socket.request.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
-        this.socket.response.pipe(takeUntil(this.destroyed)).subscribe(this.requestResponseReceived);
+        this.socket.evented.pipe(takeUntil(this.destroyed)).subscribe(this.requestEventReceived);
+        this.socket.requested.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
+        this.socket.responsed.pipe(takeUntil(this.destroyed)).subscribe(this.requestResponseReceived);
     }
 
     // --------------------------------------------------------------------------
