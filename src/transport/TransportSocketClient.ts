@@ -26,7 +26,7 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     protected eventListenersRemove(socket: Socket): void {
         socket.off(TRANSPORT_SOCKET_CONNECTED, this.proxyTransportSocketEventRequest);
 
-        socket.on(TRANSPORT_SOCKET_ERROR, this.proxyTransportSocketError);
+        socket.off(TRANSPORT_SOCKET_ERROR, this.proxyTransportSocketError);
         socket.off(TRANSPORT_SOCKET_EVENT, this.proxyTransportSocketEventRequest);
         socket.off(TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, this.proxyTransportSocketCommandRequest);
         socket.off(TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, this.proxyTransportSocketCommandResponse);
@@ -42,7 +42,7 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
 
     protected proxyTransportSocketConnected = (): void => this.socketConnectedHandler();
 
-    protected proxyTransportSocketError = <U>(item: ExtendedError): void => this.transportErrorHandler(item);
+    protected proxyTransportSocketError = (item: ExtendedError): void => this.transportErrorHandler(item);
     protected proxyTransportSocketEventRequest = <U>(item: ITransportEvent<U>): void => this.transportEventRequestHandler(item);
     protected proxyTransportSocketCommandRequest = (item: ITransportSocketRequestPayload): void => this.transportCommandRequestHandler(item);
     protected proxyTransportSocketCommandResponse = (item: ITransportSocketResponsePayload): void => this.transportCommandResponseHandler(item);
