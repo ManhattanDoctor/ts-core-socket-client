@@ -148,26 +148,22 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
     }
 
     protected socketDisconnectedHandler(reason: string): void {
-        console.log('socketDisconnectedHandler', reason);
         this.error = new ExtendedError(reason);
         this.status = LoadableStatus.NOT_LOADED;
         // this.connectionReject();
     }
 
     protected socketConnectErrorHandler(event: any): void {
-        console.log('socketConnectErrorHandler', event);
         this.error = ExtendedError.create(event);
         this.status = LoadableStatus.NOT_LOADED;
         this.connectionReject();
     }
 
     protected socketReconnectErrorHandler(event: any): void {
-        console.log('socketReconnectErrorHandler', event);
         this.error = ExtendedError.create(event);
     }
 
     protected socketReconnectFailedHandler(): void {
-        console.log('socketReconnectFailedHandler');
         this.status = LoadableStatus.NOT_LOADED;
         this.connectionReject();
     }
