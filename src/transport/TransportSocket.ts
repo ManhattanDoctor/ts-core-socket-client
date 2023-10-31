@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
-import { ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings } from '@ts-core/common';
+import { ArrayUtil, ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings } from '@ts-core/common';
 import { takeUntil } from 'rxjs';
 import { TransportSocketImpl, TRANSPORT_SOCKET_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest } from '@ts-core/socket-common';
 import { TransportSocketClient } from './TransportSocketClient';
+import { TransportSocketRoomAction, TransportSocketRoomCommand } from '@ts-core/socket-common';
 
-export class TransportSocket<S extends TransportSocketClient = TransportSocketClient> extends TransportSocketImpl {
+export class TransportSocket<S extends TransportSocketClient = TransportSocketClient> extends TransportSocketImpl<ITransportSocketSettings> {
     // --------------------------------------------------------------------------
     //
     //  Properties
@@ -12,6 +13,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     // --------------------------------------------------------------------------
 
     protected _socket: S;
+    protected _rooms: Array<string>;
 
     // --------------------------------------------------------------------------
     //
@@ -19,9 +21,15 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    constructor(logger: ILogger, settings: ITransportSettings, socket: S) {
+    constructor(logger: ILogger, settings: ITransportSocketSettings, socket: S) {
         super(logger, settings);
+
         this._socket = socket;
+        this._rooms = new Array();
+
+        this.socket.completed.pipe(takeUntil(this.destroyed)).subscribe(() => this.connectedHandler());
+        this.socket.completed.pipe(takeUntil(this.destroyed)).subscribe(() => this.disconnectedHandler());
+
         this.socket.transportEvent.pipe(takeUntil(this.destroyed)).subscribe(this.requestEventReceived);
         this.socket.transportRequest.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
         this.socket.transportResponse.pipe(takeUntil(this.destroyed)).subscribe(this.requestResponseReceived);
@@ -33,12 +41,53 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
+    public roomAdd(name: string): void {
+        this.send(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name }));
+        if (!_.includes(this.rooms, name)) {
+            this.rooms.push(name);
+        }
+    }
+
+    public roomRemove(name: string): void {
+        this.send(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.REMOVE, name }));
+        if (_.includes(this.rooms, name)) {
+            _.remove(this.rooms, name);
+        }
+    }
+
+    public roomsRemove(): void {
+        if (_.isEmpty(this.rooms)) {
+            return;
+        }
+        this.rooms.forEach(item => this.roomRemove(item));
+        ArrayUtil.clear(this.rooms);
+    }
+
     public destroy(): void {
         if (this.isDestroyed) {
             return;
         }
         super.destroy();
+        this._rooms = null;
         this._socket = null;
+    }
+
+    // --------------------------------------------------------------------------
+    //
+    //  Event Handlers
+    //
+    // --------------------------------------------------------------------------
+
+    protected connectedHandler(): void {
+        if (this.settings.isRestoreRoomsOnConnection && !_.isEmpty(this.rooms)) {
+            this.rooms.forEach(item => this.roomAdd(item));
+        }
+    }
+
+    protected disconnectedHandler(): void {
+        if (this.settings.isClearRoomsOnDisconnection) {
+            this.roomsRemove();
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -82,7 +131,15 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
+    public get rooms(): Array<string> {
+        return this._rooms;
+    }
     public get socket(): TransportSocketClient {
         return this._socket;
     }
+}
+
+export interface ITransportSocketSettings extends ITransportSettings {
+    isRestoreRoomsOnConnection?: boolean;
+    isClearRoomsOnDisconnection?: boolean;
 }
