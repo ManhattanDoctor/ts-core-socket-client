@@ -28,7 +28,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         this._rooms = new Array();
 
         this.socket.completed.pipe(takeUntil(this.destroyed)).subscribe(() => this.connectedHandler());
-        this.socket.completed.pipe(takeUntil(this.destroyed)).subscribe(() => this.disconnectedHandler());
+        this.socket.errored.pipe(takeUntil(this.destroyed)).subscribe(() => this.disconnectedHandler());
 
         this.socket.transportEvent.pipe(takeUntil(this.destroyed)).subscribe(this.requestEventReceived);
         this.socket.transportRequest.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
@@ -78,13 +78,13 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    protected connectedHandler(): void {
+    protected async connectedHandler(): Promise<void> {
         if (this.settings.isRestoreRoomsOnConnection && !_.isEmpty(this.rooms)) {
             this.rooms.forEach(item => this.roomAdd(item));
         }
     }
 
-    protected disconnectedHandler(): void {
+    protected async disconnectedHandler(): Promise<void> {
         if (this.settings.isClearRoomsOnDisconnection) {
             this.roomsRemove();
         }
