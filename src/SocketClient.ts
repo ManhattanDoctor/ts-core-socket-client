@@ -1,8 +1,9 @@
 import { ILogger, PromiseHandler, ExtendedError, ObservableData, Loadable, LoadableStatus, LoadableEvent, UrlUtil } from '@ts-core/common';
 import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
+import { Observable, map, filter } from 'rxjs';
 import * as _ from 'lodash';
 
-export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocketClientBaseSettings, U = any, V = any> extends Loadable<U, V> {
+export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocketClientBaseSettings, U = any, V = any> extends Loadable<U | SocketClientEvent, V | SocketClientData> {
 
     // --------------------------------------------------------------------------
     //
@@ -144,27 +145,32 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
     protected socketConnectedHandler(): void {
         this.error = null;
         this.status = LoadableStatus.LOADED;
+        this.observer.next(new ObservableData(SocketClientEvent.SOCKET_CONNECTED));
         this.connectionResolve();
     }
 
     protected socketDisconnectedHandler(reason: string): void {
         this.error = new ExtendedError(reason);
-        this.status = LoadableStatus.NOT_LOADED;
+        this.status = LoadableStatus.LOADING;
+        this.observer.next(new ObservableData(SocketClientEvent.SOCKET_DISCONNECTED, this.error));
         // this.connectionReject();
     }
 
     protected socketConnectErrorHandler(event: any): void {
         this.error = ExtendedError.create(event);
         this.status = LoadableStatus.NOT_LOADED;
+        this.observer.next(new ObservableData(SocketClientEvent.SOCKET_CONNECT_ERROR, this.error));
         this.connectionReject();
     }
 
     protected socketReconnectErrorHandler(event: any): void {
         this.error = ExtendedError.create(event);
+        this.observer.next(new ObservableData(SocketClientEvent.SOCKET_RECONNECT_ERROR, this.error));
     }
 
     protected socketReconnectFailedHandler(): void {
         this.status = LoadableStatus.NOT_LOADED;
+        this.observer.next(new ObservableData(SocketClientEvent.SOCKET_RECONNECT_FAILED));
         this.connectionReject();
     }
 
@@ -230,7 +236,46 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
             this.commitSettingsProperties();
         }
     }
+
+    public get connected(): Observable<void> {
+        return this.events.pipe(
+            filter(item => item.type === SocketClientEvent.SOCKET_CONNECTED),
+            map(() => null)
+        );
+    }
+    public get disconnected(): Observable<ExtendedError> {
+        return this.events.pipe(
+            filter(item => item.type === SocketClientEvent.SOCKET_DISCONNECTED),
+            map(item => item.data as any)
+        );
+    }
+    public get connectedError(): Observable<ExtendedError> {
+        return this.events.pipe(
+            filter(item => item.type === SocketClientEvent.SOCKET_CONNECT_ERROR),
+            map(item => item.data as any)
+        );
+    }
+    public get reconnectedError(): Observable<ExtendedError> {
+        return this.events.pipe(
+            filter(item => item.type === SocketClientEvent.SOCKET_RECONNECT_ERROR),
+            map(item => item.data as any)
+        );
+    }
+    public get reconnectedFailed(): Observable<ExtendedError> {
+        return this.events.pipe(
+            filter(item => item.type === SocketClientEvent.SOCKET_RECONNECT_FAILED),
+            map(() => null)
+        );
+    }
 }
+export enum SocketClientEvent {
+    SOCKET_CONNECTED = 'SOCKET_CONNECTED',
+    SOCKET_DISCONNECTED = 'SOCKET_DISCONNECTED',
+    SOCKET_CONNECT_ERROR = 'SOCKET_CONNECT_ERROR',
+    SOCKET_RECONNECT_ERROR = 'SOCKET_RECONNECT_ERROR',
+    SOCKET_RECONNECT_FAILED = 'SOCKET_RECONNECT_FAILED',
+}
+export type SocketClientData = ExtendedError;
 
 export interface ISocketClientBaseSettings extends Partial<ManagerOptions & SocketOptions> {
     url?: string;

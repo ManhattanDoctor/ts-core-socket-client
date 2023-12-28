@@ -27,8 +27,9 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         this._socket = socket;
         this._rooms = new Array();
 
-        this.socket.completed.pipe(takeUntil(this.destroyed)).subscribe(() => this.connectedHandler());
-        this.socket.errored.pipe(takeUntil(this.destroyed)).subscribe(() => this.disconnectedHandler());
+        this.socket.connected.pipe(takeUntil(this.destroyed)).subscribe(() => this.connectedHandler());
+        this.socket.disconnected.pipe(takeUntil(this.destroyed)).subscribe(() => this.disconnectedHandler());
+        this.socket.reconnectedFailed.pipe(takeUntil(this.destroyed)).subscribe(() => this.reconnectedFailedHandler());
 
         this.socket.transportEvent.pipe(takeUntil(this.destroyed)).subscribe(this.requestEventReceived);
         this.socket.transportRequest.pipe(takeUntil(this.destroyed)).subscribe(this.responseRequestReceived);
@@ -79,16 +80,18 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     // --------------------------------------------------------------------------
 
     protected async connectedHandler(): Promise<void> {
-        if (this.settings.isRestoreRoomsOnConnection && !_.isEmpty(this.rooms)) {
+        if (this.settings.isRestoreRoomsOnConnect && !_.isEmpty(this.rooms)) {
             this.rooms.forEach(item => this.roomAdd(item));
         }
     }
 
     protected async disconnectedHandler(): Promise<void> {
-        if (this.settings.isClearRoomsOnDisconnection) {
+        if (this.settings.isClearRoomsOnDisconnect) {
             this.roomsRemove();
         }
     }
+
+    protected async reconnectedFailedHandler(): Promise<void> { }
 
     // --------------------------------------------------------------------------
     //
@@ -140,6 +143,6 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 }
 
 export interface ITransportSocketSettings extends ITransportSettings {
-    isRestoreRoomsOnConnection?: boolean;
-    isClearRoomsOnDisconnection?: boolean;
+    isRestoreRoomsOnConnect?: boolean;
+    isClearRoomsOnDisconnect?: boolean;
 }
