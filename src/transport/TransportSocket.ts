@@ -12,9 +12,9 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    protected _socket: S;
     protected _rooms: Array<string>;
-
+    protected _socket: S;
+    
     // --------------------------------------------------------------------------
     //
     //  Constructor
