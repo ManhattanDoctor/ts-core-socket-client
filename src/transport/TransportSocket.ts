@@ -157,15 +157,24 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 
     // --------------------------------------------------------------------------
     //
-    //  Public Methods
+    //  Public Properties
     //
     // --------------------------------------------------------------------------
 
     public get rooms(): Array<string> {
         return this._rooms;
     }
+    
     public get socket(): TransportSocketClient {
         return this._socket;
+    }
+
+    public get url(): string {
+        return this.socket.url;
+    }
+
+    public set url(value: string) {
+        this.socket.url = value;
     }
 }
 
