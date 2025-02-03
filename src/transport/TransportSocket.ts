@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { ArrayUtil, ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings } from '@ts-core/common';
 import { takeUntil } from 'rxjs';
-import { TransportSocketImpl, TRANSPORT_SOCKET_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest } from '@ts-core/socket-common';
+import { TransportSocketImpl, TRANSPORT_SOCKET_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest, ITransportSocketRoomDto } from '@ts-core/socket-common';
 import { TransportSocketClient } from './TransportSocketClient';
 import { TransportSocketRoomAction, TransportSocketRoomCommand } from '@ts-core/socket-common';
 
@@ -14,7 +14,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 
     protected _rooms: Array<string>;
     protected _socket: S;
-    
+
     // --------------------------------------------------------------------------
     //
     //  Constructor
@@ -41,6 +41,33 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //  Public Methods
     //
     // --------------------------------------------------------------------------
+
+    public connect(): Promise<void> {
+        return this.socket.connect();
+    }
+
+    public disconnect(): void {
+        this.roomsRemove();
+        this.socket.disconnect();
+    }
+
+    // --------------------------------------------------------------------------
+    //
+    //  Room Methods
+    //
+    // --------------------------------------------------------------------------
+
+    protected async roomHandler(item: ITransportSocketRoomDto): Promise<void> {
+        let { action, name } = item;
+        switch (action) {
+            case TransportSocketRoomAction.ADD:
+                this.roomAdd(name);
+                break;
+            case TransportSocketRoomAction.REMOVE:
+                this.roomRemove(name);
+                break;
+        }
+    }
 
     public roomAdd(name: string): void {
         this.send(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name }));
