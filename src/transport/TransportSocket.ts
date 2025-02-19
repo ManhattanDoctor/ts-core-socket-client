@@ -1,9 +1,9 @@
-import * as _ from 'lodash';
-import { ArrayUtil, ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings } from '@ts-core/common';
+import { ArrayUtil, ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings, UnreachableStatementError } from '@ts-core/common';
 import { takeUntil } from 'rxjs';
 import { TransportSocketImpl, TRANSPORT_SOCKET_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest, ITransportSocketRoomDto } from '@ts-core/socket-common';
 import { TransportSocketClient } from './TransportSocketClient';
 import { TransportSocketRoomAction, TransportSocketRoomCommand } from '@ts-core/socket-common';
+import * as _ from 'lodash';
 
 export class TransportSocket<S extends TransportSocketClient = TransportSocketClient> extends TransportSocketImpl<ITransportSocketSettings> {
     // --------------------------------------------------------------------------
@@ -47,7 +47,9 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     }
 
     public disconnect(): void {
-        this.roomsRemove();
+        if (this.settings.isClearRoomsOnDisconnect) {
+            this.roomsRemove();
+        }
         this.socket.disconnect();
     }
 
@@ -57,37 +59,39 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    protected async roomHandler(item: ITransportSocketRoomDto): Promise<void> {
+    protected async roomHandler(item: ITransportSocketRoomDto): Promise<string> {
         let { action, name } = item;
         switch (action) {
             case TransportSocketRoomAction.ADD:
-                this.roomAdd(name);
-                break;
+                return this.roomAdd(name);
             case TransportSocketRoomAction.REMOVE:
-                this.roomRemove(name);
-                break;
+                return this.roomRemove(name);
+            default:
+                throw new UnreachableStatementError(action);
         }
     }
 
-    public roomAdd(name: string): void {
-        this.send(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name }));
+    public async roomAdd(name: string): Promise<string> {
+        name = await this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name }));
         if (!_.includes(this.rooms, name)) {
             this.rooms.push(name);
         }
+        return name;
     }
 
-    public roomRemove(name: string): void {
-        this.send(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.REMOVE, name }));
+    public async roomRemove(name: string): Promise<string> {
+        name = await this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.REMOVE, name }));
         if (_.includes(this.rooms, name)) {
             _.remove(this.rooms, name);
         }
+        return name;
     }
 
-    public roomsRemove(): void {
+    public async roomsRemove(): Promise<void> {
         if (_.isEmpty(this.rooms)) {
             return;
         }
-        this.rooms.forEach(item => this.roomRemove(item));
+        await Promise.all(this.rooms.map(item => this.roomRemove(item)));
         ArrayUtil.clear(this.rooms);
     }
 
@@ -164,7 +168,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     public get rooms(): Array<string> {
         return this._rooms;
     }
-    
+
     public get socket(): TransportSocketClient {
         return this._socket;
     }
