@@ -40,7 +40,9 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
 
     protected commitStatusChangedProperties(oldStatus: LoadableStatus, newStatus: LoadableStatus): void {
         super.commitStatusChangedProperties(oldStatus, newStatus);
-
+        if (this.isDestroyed) {
+            return;
+        }
         switch (newStatus) {
             case LoadableStatus.LOADING:
                 this.observer.next(new ObservableData(LoadableEvent.STARTED));
@@ -113,7 +115,6 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
         }
         super.destroy();
         this.disconnect();
-
         this._settings = null;
         this.logger = null;
     }
