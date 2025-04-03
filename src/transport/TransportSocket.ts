@@ -1,8 +1,8 @@
-import { ArrayUtil, ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings, UnreachableStatementError } from '@ts-core/common';
-import { takeUntil } from 'rxjs';
+import { ILogger, ITransportCommand, ITransportCommandAsync, ITransportEvent, ITransportSettings, UnreachableStatementError } from '@ts-core/common';
 import { TransportSocketImpl, TRANSPORT_SOCKET_EVENT, ITransportSocketCommandOptions, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, ITransportSocketEventOptions, ITransportSocketCommandRequest, ITransportSocketRoomDto } from '@ts-core/socket-common';
 import { TransportSocketClient } from './TransportSocketClient';
 import { TransportSocketRoomAction, TransportSocketRoomCommand } from '@ts-core/socket-common';
+import { takeUntil } from 'rxjs';
 import * as _ from 'lodash';
 
 export class TransportSocket<S extends TransportSocketClient = TransportSocketClient> extends TransportSocketImpl<ITransportSocketSettings> {
@@ -12,7 +12,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    protected _rooms: Set<string>;
+    protected rooms: Map<string, ITransportSocketRoom>;
     protected _socket: S;
 
     // --------------------------------------------------------------------------
@@ -25,7 +25,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         super(logger, settings);
 
         this._socket = socket;
-        this._rooms = new Set();
+        this.rooms = new Map();
 
         this.socket.connected.pipe(takeUntil(this.destroyed)).subscribe(() => this.connectedHandler());
         this.socket.disconnected.pipe(takeUntil(this.destroyed)).subscribe(() => this.disconnectedHandler());
@@ -71,23 +71,61 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         }
     }
 
-    protected async _roomAdd(name: string): Promise<string> {
+    protected async roomAddIfNeed(item: ITransportSocketRoom, isForce?: boolean): Promise<void> {
+        if (item.listeners > 0 && !isForce) {
+            return;
+        }
         try {
-            return this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name }));
+            await this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name: item.name }));
         }
         catch (error) {
-            this.warn(`Unable to add room "${name}": ${error.message}`);
+            this.warn(`Unable to add room "${item.name}": ${error.message}`);
             throw error;
+        }
+        finally {
+            this.checkRoom(item);
         }
     }
 
-    protected async _roomRemove(name: string): Promise<string> {
+    protected async roomRemoveIfNeed(item: ITransportSocketRoom, isForce?: boolean): Promise<void> {
+        if (item.listeners > 0 && !isForce) {
+            return;
+        }
         try {
-            return this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.REMOVE, name }));
+            await this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.REMOVE, name: item.name }));
         }
         catch (error) {
-            this.warn(`Unable to remove room "${name}": ${error.message}`);
+            this.warn(`Unable to remove room "${item.name}": ${error.message}`);
             throw error;
+        }
+        finally {
+            this.checkRoom(item);
+        }
+    }
+
+    protected async roomsAdd(): Promise<void> {
+        if (this.rooms.size === 0) {
+            return;
+        }
+        for (let item of Array.from(this.rooms.values())) {
+            await this.roomAddIfNeed(item, true);
+        }
+    }
+
+    protected async roomsRemove(): Promise<void> {
+        if (this.rooms.size === 0) {
+            return;
+        }
+        for (let item of Array.from(this.rooms.values())) {
+            await this.roomRemoveIfNeed(item, true);
+        }
+        this.rooms.clear();
+    }
+
+    protected checkRoom(item: ITransportSocketRoom): void {
+        let { name, listeners } = item;
+        if (listeners === 0) {
+            this.rooms.delete(name);
         }
     }
 
@@ -98,16 +136,12 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     // --------------------------------------------------------------------------
 
     public async roomAdd(name: string): Promise<string> {
-        if (this.rooms.has(name)) {
-            return name;
+        if (!this.rooms.has(name)) {
+            this.rooms.set(name, { name, listeners: 0 });
         }
-        this.rooms.add(name);
-        try {
-            await this._roomAdd(name);
-        }
-        catch (error) {
-            this.rooms.delete(name);
-        }
+        let item = this.rooms.get(name);
+        this.roomAddIfNeed(item);
+        item.listeners++;
         return name;
     }
 
@@ -115,22 +149,10 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         if (!this.rooms.has(name)) {
             return name;
         }
-        this.rooms.delete(name);
-        try {
-            await this._roomRemove(name);
-        }
-        catch (error) {
-            this.rooms.add(name);
-        }
+        let item = this.rooms.get(name);
+        item.listeners--;
+        this.roomRemoveIfNeed(item);
         return name;
-    }
-
-    public async roomsRemove(): Promise<void> {
-        if (this.rooms.size === 0) {
-            return;
-        }
-        await Promise.all(Array.from(this.rooms.values()).map(item => this.roomRemove(item)));
-        this.rooms.clear();
     }
 
     public destroy(): void {
@@ -138,7 +160,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
             return;
         }
         super.destroy();
-        this._rooms = null;
+        this.rooms = null;
         this._socket = null;
     }
 
@@ -149,14 +171,14 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     // --------------------------------------------------------------------------
 
     protected async connectedHandler(): Promise<void> {
-        if (this.settings.isRestoreRoomsOnConnect && !_.isEmpty(this.rooms)) {
-            this.rooms.forEach(item => this.roomAdd(item));
+        if (this.settings.isRestoreRoomsOnConnect) {
+            await this.roomsAdd();
         }
     }
 
     protected async disconnectedHandler(): Promise<void> {
         if (this.settings.isClearRoomsOnDisconnect) {
-            this.roomsRemove();
+            await this.roomsRemove();
         }
     }
 
@@ -203,10 +225,6 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     //
     // --------------------------------------------------------------------------
 
-    public get rooms(): Set<string> {
-        return this._rooms;
-    }
-
     public get socket(): TransportSocketClient {
         return this._socket;
     }
@@ -218,6 +236,11 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     public set url(value: string) {
         this.socket.url = value;
     }
+}
+
+interface ITransportSocketRoom {
+    name: string;
+    listeners: number;
 }
 
 export interface ITransportSocketSettings extends ITransportSettings {
