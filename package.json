@@ -17,8 +17,8 @@
     },
     "license": "ISC",
     "dependencies": {
-        "@ts-core/socket-common": "~3.0.13",
-        "socket.io-client": "^4.6.1"
+        "@ts-core/socket-common": "~3.0.14",
+        "socket.io-client": "^4.8.1"
     },
     "devDependencies": {
         "@types/node": "^14.14.31",

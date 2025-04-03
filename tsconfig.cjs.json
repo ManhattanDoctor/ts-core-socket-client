@@ -13,7 +13,7 @@
         "sourceMap": true,
         "allowJs": false,
         "outDir": "dist",
-        "lib": ["es7"]
+        "lib": ["es7", "dom"]
     },
     "include": ["src/*.ts", "src/**/*.ts"],
     "exclude": ["node_modules", "**/*.spec.ts"]
