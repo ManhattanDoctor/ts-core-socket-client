@@ -268,6 +268,10 @@ export abstract class SocketClient<S extends ISocketClientBaseSettings = ISocket
             map(() => null)
         );
     }
+
+    public get isConnected(): boolean {
+        return this._status === LoadableStatus.LOADED;
+    }
 }
 export enum SocketClientEvent {
     SOCKET_CONNECTED = 'SOCKET_CONNECTED',

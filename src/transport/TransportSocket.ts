@@ -75,6 +75,9 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
         if (item.listeners > 0 && !isForce) {
             return;
         }
+        if (!this.socket.isConnected) {
+            return;
+        }
         try {
             await this.sendListen(new TransportSocketRoomCommand({ action: TransportSocketRoomAction.ADD, name: item.name }));
         }
@@ -89,6 +92,9 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 
     protected async roomRemoveIfNeed(item: ITransportSocketRoom, isForce?: boolean): Promise<void> {
         if (item.listeners > 0 && !isForce) {
+            return;
+        }
+        if (!this.socket.isConnected) {
             return;
         }
         try {
@@ -192,7 +198,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
 
     protected async eventRequestExecute<U>(event: ITransportEvent<U>, options?: ITransportSocketEventOptions): Promise<void> {
         try {
-            await this.socket.emit(TRANSPORT_SOCKET_EVENT, event);
+            this.socket.emit(TRANSPORT_SOCKET_EVENT, event);
         }
         catch (error) {
             this.eventRequestErrorCatch(event, options, error);
@@ -202,7 +208,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     protected async commandRequestExecute<U>(command: ITransportCommand<U>, options: ITransportSocketCommandOptions, isNeedReply: boolean): Promise<void> {
         let payload = this.createRequestPayload(command, options, isNeedReply);
         try {
-            await this.socket.emit(TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, payload);
+            this.socket.emit(TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, payload);
         }
         catch (error) {
             this.commandRequestErrorCatch(command, options, isNeedReply, error);
@@ -212,7 +218,7 @@ export class TransportSocket<S extends TransportSocketClient = TransportSocketCl
     protected async commandResponseExecute<U, V>(command: ITransportCommandAsync<U, V>, request: ITransportSocketCommandRequest): Promise<void> {
         let payload = this.createResponsePayload(command, request);
         try {
-            await this.socket.emit(TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, payload);
+            this.socket.emit(TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, payload);
         }
         catch (error) {
             this.commandResponseErrorCatch(command, request, error);

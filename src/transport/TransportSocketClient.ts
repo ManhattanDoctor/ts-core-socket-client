@@ -3,8 +3,8 @@ import { ObservableData, ITransportEvent, ExtendedError } from '@ts-core/common'
 import { ITransportSocketRequestPayload, TransportSocketRequestPayload, ITransportSocketResponsePayload, TRANSPORT_SOCKET_CONNECTED, TRANSPORT_SOCKET_COMMAND_REQUEST_METHOD, TRANSPORT_SOCKET_ERROR, TRANSPORT_SOCKET_COMMAND_RESPONSE_METHOD, TRANSPORT_SOCKET_EVENT } from '@ts-core/socket-common';
 import { filter, map, Observable } from 'rxjs';
 import { Socket } from 'socket.io-client';
-import * as _ from 'lodash';
 import { ISocketClientBaseSettings, SocketClient } from '../SocketClient';
+import * as _ from 'lodash';
 
 export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocketClientBaseSettings> extends SocketClient<S, TransportSocketClientEvent, TransportSocketClientEventData> {
 
@@ -79,7 +79,13 @@ export class TransportSocketClient<S extends ISocketClientBaseSettings = ISocket
     //
     // --------------------------------------------------------------------------
 
-    public async emit<T>(name: string, data: T): Promise<void> {
+    public emit<T>(name: string, data: T): void {
+        if (!this.isConnected) {
+            throw new ExtendedError(`Unable to emit "${name}": socket is not connected`);
+        }
+        if (_.isNil(this.socket)) {
+            throw new ExtendedError(`Unable to emit "${name}": socket is undefined`);
+        }
         this.socket.emit(name, data);
     }
 
