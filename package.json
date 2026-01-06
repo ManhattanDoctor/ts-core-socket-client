@@ -1,7 +1,7 @@
 {
     "name": "@ts-core/socket-client",
     "version": "3.0.21",
-    "description": "Classes and utils for socket-client",
+    "description": "TypeScript WebSocket client library based on Socket.IO with RxJS support, connection management, and transport commands handling",
     "main": "./cjs/public-api.js",
     "module": "./esm/public-api.js",
     "exports": {
@@ -29,7 +29,14 @@
         "url": "git+https://github.com/ManhattanDoctor/ts-core-socket-client.git"
     },
     "keywords": [
-        "typescript"
+        "typescript",
+        "websocket",
+        "socket.io",
+        "socket-client",
+        "rxjs",
+        "real-time",
+        "transport",
+        "ts-core"
     ],
     "bugs": {
         "url": "https://github.com/ManhattanDoctor/ts-core-socket-client/issues"
